@@ -1,54 +1,46 @@
 import React, { useState } from 'react';
+import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
 import './auth.css';
 
 const Login = () => {
-  const [credentials, setCredentials] = useState({ 
-    username: '', 
-    password: '' 
-  });
-  const [error, setError] = useState('');
-  const { login } = useAuth();
-  const navigate = useNavigate();
+    const [username, setUsername] = useState('');
+    const [password, setPassword] = useState('');
+    const navigate = useNavigate();
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      await login(credentials);
-      navigate('/');
-    } catch (err) {
-      setError('Invalid username or password');
-    }
-  };
+    const handleLogin = async () => {
+        try {
+            const response = await axios.post('http://localhost:8080/login', { username, password });
+            localStorage.setItem('token', response.data.token);
+            localStorage.setItem('userId', response.data.user_id); 
+            localStorage.setItem('username', response.data.username);
+            navigate('/posts');
+        } catch (error) {
+            console.error('Login failed:', error);
+            alert('Login failed. Please check your credentials.');
+        }
+    };
 
-  return (
-    <div className="auth-container">
-      <h2>Login</h2>
-      <form onSubmit={handleSubmit}>
-        <div className="form-group">
-          <label>Username:</label>
-          <input
-            type="text"
-            value={credentials.username}
-            onChange={(e) => setCredentials({...credentials, username: e.target.value})}
-            required
-          />
+    return (
+        <div className="auth-container"> {/* Добавьте класс для стилизации */}
+            <h2>Login</h2>
+            <input  //Заменил Input на input и добавил className
+                type="text"
+                className="form-control"
+                placeholder="Username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+            />
+            <input //Заменил Input на input и добавил className
+                type="password"
+                className="form-control"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+            />
+            <button className="btn btn-primary" onClick={handleLogin}>Login</button>
         </div>
-        <div className="form-group">
-          <label>Password:</label>
-          <input
-            type="password"
-            value={credentials.password}
-            onChange={(e) => setCredentials({...credentials, password: e.target.value})}
-            required
-          />
-        </div>
-        {error && <div className="error-message">{error}</div>}
-        <button type="submit">Sign In</button>
-      </form>
-    </div>
-  );
+    );
 };
 
 export default Login;
