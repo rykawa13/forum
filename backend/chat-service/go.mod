@@ -1,4 +1,4 @@
-module github.com/rykawa13/auth-service
+module github.com/rykawa13/chat-service
 
 go 1.24.2
 
