@@ -1,0 +1,8 @@
+# Ignore everything
+**/node_modules/
+**/build/
+**/.DS_Store
+ 
+# Don't ignore these files
+!.env
+!**/.env 

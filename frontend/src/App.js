@@ -1,49 +1,114 @@
-import React, { useState } from 'react';
-import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
-import Login from './components/Auth/Login';
-import Register from './components/Auth/Register';
-import PostList from './components/Posts/PostList';
-import CreatePost from './components/Posts/CreatePost';
-import MainLayout from './components/Layout/MainLayout';
-import Chat from './components/Chat/Chat'; // Добавьте импорт
-import './components/MainLayout.css';
+import React, { useEffect, useState } from 'react';
+import { Routes, Route } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
+import { ThemeProvider } from '@mui/material/styles';
+import CssBaseline from '@mui/material/CssBaseline';
+import theme from './theme.ts';
+import { checkAuth, logout } from './store/authSlice';
+import { getAuthToken } from './utils/auth';
+import { setUnauthorizedCallback } from './api/axios';
+import Header from './components/common/Header';
+import Footer from './components/common/Footer';
+import HomePage from './pages/HomePage';
+import ForumPage from './pages/ForumPage';
+import ChatPage from './pages/ChatPage';
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
+import ProfilePage from './pages/ProfilePage';
+import AdminPage from './pages/AdminPage';
+import PrivateRoute from './utils/PrivateRoute';
+import AdminRoute from './utils/AdminRoute';
+import { CircularProgress, Box } from '@mui/material';
+import AdminPanel from './components/admin/AdminPanel';
 
-const PrivateRoute = ({ children }) => {
-    const token = localStorage.getItem('token');
-    return token ? children : <Navigate to="/login" />;
-};
+function App() {
+  const dispatch = useDispatch();
+  const { loading } = useSelector(state => state.auth);
+  const [isInitializing, setIsInitializing] = useState(true);
+  const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
 
-const App = () => {
-    const [refreshPosts, setRefreshPosts] = useState(false);
+  // Настраиваем обработчик 401 ошибки
+  useEffect(() => {
+    setUnauthorizedCallback(() => {
+      dispatch(logout());
+    });
+  }, [dispatch]);
 
-    const onPostCreated = () => {
-        setRefreshPosts(prev => !prev);
+  useEffect(() => {
+    const initializeAuth = async () => {
+      const token = getAuthToken();
+      if (token) {
+        try {
+          await dispatch(checkAuth()).unwrap();
+        } catch (error) {
+          console.error('Failed to restore auth state:', error);
+        }
+      }
+      setIsInitializing(false);
     };
 
+    initializeAuth();
+  }, [dispatch]);
+
+  // Показываем загрузку только при инициализации
+  if (isInitializing) {
     return (
-        <Router>
-            <MainLayout>
-                <Routes>
-                    <Route path="/register" element={<Register />} />
-                    <Route path="/login" element={<Login />} />
-                    <Route path="/posts" element={
-                        <PrivateRoute>
-                            <>
-                                <CreatePost onPostCreated={onPostCreated} />
-                                <PostList key={refreshPosts} />
-                            </>
-                        </PrivateRoute>
-                    } />
-                    <Route path="/chat" element={
-                        <PrivateRoute>
-                            <Chat />
-                        </PrivateRoute>
-                    } />
-                    <Route path="/" element={<Navigate to="/login" />} />
-                </Routes>
-            </MainLayout>
-        </Router>
+      <Box 
+        sx={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          height: '100vh' 
+        }}
+      >
+        <CircularProgress />
+      </Box>
     );
-};
+  }
+
+  return (
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          minHeight: '100vh', // Ensures minimum height of 100% of viewport
+        }}
+      >
+        <Header />
+        <Box
+          component="main"
+          sx={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/forum" element={<ForumPage />} />
+            <Route path="/chat" element={<ChatPage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route
+              path="/profile"
+              element={<PrivateRoute><ProfilePage /></PrivateRoute>}
+            />
+            <Route
+              path="/admin/*"
+              element={
+                <AdminRoute>
+                  <AdminPanel />
+                </AdminRoute>
+              }
+            />
+          </Routes>
+        </Box>
+        <Footer />
+      </Box>
+    </ThemeProvider>
+  );
+}
 
 export default App;
