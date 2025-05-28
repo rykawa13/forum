@@ -39,15 +39,6 @@ type UserStatus struct {
 	IsBlocked bool `json:"is_blocked"`
 }
 
-type SessionInfo struct {
-	ID        int       `json:"id"`
-	UserID    int       `json:"user_id"`
-	UserAgent string    `json:"user_agent"`
-	IP        string    `json:"ip"`
-	CreatedAt time.Time `json:"created_at"`
-	IsActive  bool      `json:"is_active"`
-}
-
 type SessionListResponse struct {
 	Sessions []SessionInfo `json:"sessions"`
 	Total    int           `json:"total"`

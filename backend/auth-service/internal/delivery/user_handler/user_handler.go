@@ -248,6 +248,34 @@ func (h *UserHandler) GetStats(c *gin.Context) {
 	c.JSON(http.StatusOK, stats)
 }
 
+// @Summary Delete User
+// @Tags admin
+// @Description Delete user by ID
+// @Security ApiKeyAuth
+// @Produce json
+// @Param id path int true "User ID"
+// @Success 204 "No Content"
+// @Failure 400,401,403,500 {object} map[string]interface{}
+// @Router /api/users/{id} [delete]
+func (h *UserHandler) DeleteUser(c *gin.Context) {
+	userID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user id"})
+		return
+	}
+
+	if err := h.authUC.DeleteUser(c.Request.Context(), userID); err != nil {
+		if err.Error() == "cannot delete the last admin user" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete user"})
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}
+
 // ParseToken проверяет JWT токен и возвращает пользователя
 func (h *UserHandler) ParseToken(ctx context.Context, token string) (*entity.User, error) {
 	return h.authUC.ParseToken(ctx, token)

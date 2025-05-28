@@ -226,3 +226,36 @@ func (u *AuthUseCase) SignUp(ctx context.Context, input entity.UserCreate) error
 func (u *AuthUseCase) GetAll(ctx context.Context) ([]*entity.User, error) {
 	return u.userRepo.GetAll(ctx)
 }
+
+func (u *AuthUseCase) DeleteUser(ctx context.Context, userID int) error {
+	// Проверяем существование пользователя
+	user, err := u.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	// Проверяем, не пытаемся ли удалить последнего админа
+	if user.IsAdmin {
+		admins, err := u.userRepo.GetAll(ctx)
+		if err != nil {
+			return err
+		}
+		adminCount := 0
+		for _, u := range admins {
+			if u.IsAdmin {
+				adminCount++
+			}
+		}
+		if adminCount <= 1 {
+			return errors.New("cannot delete the last admin user")
+		}
+	}
+
+	// Удаляем все сессии пользователя
+	if err := u.sessionRepo.DeleteAllUserSessions(ctx, userID); err != nil {
+		return err
+	}
+
+	// Удаляем пользователя
+	return u.userRepo.Delete(ctx, userID)
+}

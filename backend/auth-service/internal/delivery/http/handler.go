@@ -154,13 +154,15 @@ func (h *Handler) DeleteUser(c *gin.Context) {
 		return
 	}
 
-	user, err := h.useCase.GetUserByID(c.Request.Context(), userID)
+	// Проверяем существование пользователя
+	_, err = h.useCase.GetUserByID(c.Request.Context(), userID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		return
 	}
 
-	if err := h.useCase.UpdateUser(c.Request.Context(), user); err != nil {
+	// Удаляем пользователя
+	if err := h.useCase.DeleteUser(c.Request.Context(), userID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete user"})
 		return
 	}

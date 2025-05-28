@@ -61,9 +61,10 @@ func (r *Router) Init() *gin.Engine {
 		api.GET("/me", userHandler.GetMe)
 		api.PUT("/me", userHandler.UpdateMe)
 
-		// Admin endpoints moved directly under /api
+		// Admin endpoints
 		api.GET("/users", userHandler.GetUsers)
 		api.PUT("/users/:id/role", userHandler.UpdateUserRole)
+		api.DELETE("/users/:id", userHandler.DeleteUser)
 		api.GET("/stats", userHandler.GetStats)
 	}
 

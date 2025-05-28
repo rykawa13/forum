@@ -15,3 +15,12 @@ type Session struct {
 	IP            string    `db:"ip" json:"ip"`
 	IsActive      bool      `db:"is_active" json:"is_active"`
 }
+
+type SessionInfo struct {
+	ID        int       `json:"id"`
+	UserID    int       `json:"user_id"`
+	UserAgent string    `json:"user_agent"`
+	IP        string    `json:"ip"`
+	CreatedAt time.Time `json:"created_at"`
+	IsActive  bool      `json:"is_active"`
+}

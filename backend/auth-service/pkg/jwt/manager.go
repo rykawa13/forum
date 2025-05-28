@@ -1,6 +1,7 @@
 package jwt
 
 import (
+	"crypto/rand"
 	"fmt"
 	"time"
 
@@ -56,7 +57,9 @@ func (m *Manager) Parse(accessToken string) (string, error) {
 func (m *Manager) NewRefreshToken() (string, error) {
 	b := make([]byte, 32)
 
-	s := fmt.Sprintf("%x", b)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
 
-	return s, nil
+	return fmt.Sprintf("%x", b), nil
 }
