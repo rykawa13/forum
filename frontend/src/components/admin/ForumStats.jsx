@@ -8,6 +8,8 @@ import {
 } from '@mui/material';
 import axios from 'axios';
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8081';
+
 const ForumStats = () => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -17,10 +19,8 @@ const ForumStats = () => {
     const fetchStats = async () => {
       try {
         setLoading(true);
-        const response = await axios.get('http://localhost:8081/api/stats', {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`
-          }
+        const response = await axios.get(`${API_URL}/api/stats`, {
+          withCredentials: true
         });
         setStats(response.data);
         setError(null);
@@ -40,48 +40,39 @@ const ForumStats = () => {
   if (!stats) return null;
 
   return (
-    <Grid container spacing={2}>
-      <Grid item xs={12} md={4}>
+    <Grid container spacing={3}>
+      <Grid item xs={12} sm={6} md={4}>
         <Card>
           <CardContent>
             <Typography variant="h6" gutterBottom>
-              Пользователи
+              Всего постов
             </Typography>
             <Typography variant="h4">
-              {stats.totalUsers}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Всего зарегистрировано
+              {stats.totalPosts || 0}
             </Typography>
           </CardContent>
         </Card>
       </Grid>
-      <Grid item xs={12} md={4}>
+      <Grid item xs={12} sm={6} md={4}>
         <Card>
           <CardContent>
             <Typography variant="h6" gutterBottom>
-              Темы
+              Всего комментариев
             </Typography>
             <Typography variant="h4">
-              {stats.totalTopics}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Создано на форуме
+              {stats.totalComments || 0}
             </Typography>
           </CardContent>
         </Card>
       </Grid>
-      <Grid item xs={12} md={4}>
+      <Grid item xs={12} sm={6} md={4}>
         <Card>
           <CardContent>
             <Typography variant="h6" gutterBottom>
-              Сообщения
+              Активных пользователей
             </Typography>
             <Typography variant="h4">
-              {stats.totalPosts}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Опубликовано всего
+              {stats.activeUsers || 0}
             </Typography>
           </CardContent>
         </Card>

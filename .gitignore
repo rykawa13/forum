@@ -1,3 +1,27 @@
+# Dependencies
+node_modules/
+/frontend/node_modules
+/frontend/.pnp
+/frontend/.pnp.js
+
+# Testing
+/frontend/coverage
+
+# Production
+/frontend/build
+
+# Misc
+.DS_Store
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
 # Go
 *.exe
 *.exe~
@@ -6,18 +30,8 @@
 *.dylib
 *.test
 *.out
-go.work
-
-# Node
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+/backend/**/tmp/
+/backend/**/.env
 
 # IDE
 .idea/
@@ -25,8 +39,21 @@ yarn-error.log*
 *.swp
 *.swo
 
+# Logs
+logs
+*.log
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Database
+*.db
+*.sqlite
+
 # OS
-.DS_Store
 Thumbs.db
 
 # Build
@@ -34,12 +61,6 @@ Thumbs.db
 /build
 /tmp
 /temp
-
-# Logs
-*.log
-
-# Dependencies
-vendor/
 
 # Go workspace specific
 /bin/

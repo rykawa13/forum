@@ -1,33 +1,64 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchPosts, createNewPost } from '../store/forumSlice';
 import PostList from '../components/forum/PostList';
-import PostForm from '../components/forum/PostForm';
 import { Box, Typography } from '@mui/material';
+
+// Создаем селекторы вне компонента для оптимизации
+const selectForumPosts = state => state.forum.posts;
+const selectForumLoading = state => state.forum.loading;
+const selectForumError = state => state.forum.error;
+const selectAuth = state => state.auth;
 
 const ForumPage = () => {
   const dispatch = useDispatch();
-  const { posts, loading, error } = useSelector(state => state.forum);
-  const { isAuthenticated } = useSelector(state => state.auth);
+  
+  // Используем отдельные селекторы для каждого поля
+  const posts = useSelector(selectForumPosts);
+  const loading = useSelector(selectForumLoading);
+  const error = useSelector(selectForumError);
+  const { isAuthenticated, user } = useSelector(selectAuth);
 
   useEffect(() => {
+    console.log('ForumPage: Fetching posts');
     dispatch(fetchPosts());
   }, [dispatch]);
 
-  const handleCreatePost = (postData) => {
-    dispatch(createNewPost(postData));
-  };
+  // Добавляем отладочный вывод при изменении данных
+  useEffect(() => {
+    console.log('ForumPage: Posts state changed', {
+      postsCount: posts?.length || 0,
+      loading,
+      error,
+      firstPost: posts?.[0]
+    });
+  }, [posts, loading, error]);
 
-  if (loading) return <Typography>Загрузка постов...</Typography>;
-  if (error) return <Typography color="error">Ошибка: {error}</Typography>;
+  const handleCreatePost = useCallback((postData) => {
+    if (!isAuthenticated) {
+      alert('Для создания поста необходимо войти в систему');
+      return;
+    }
+    dispatch(createNewPost({
+      ...postData,
+      author_id: user.id
+    }));
+  }, [dispatch, isAuthenticated, user]);
+
+  // Мемоизируем пропсы для PostList
+  const postListProps = useMemo(() => ({
+    posts: posts || [],
+    loading,
+    error,
+    onCreatePost: handleCreatePost
+  }), [posts, loading, error, handleCreatePost]);
 
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h4" gutterBottom>
         Форум
       </Typography>
-      {isAuthenticated && <PostForm onSubmit={handleCreatePost} />}
-      <PostList posts={posts} />
+      <PostList {...postListProps} />
     </Box>
   );
 };

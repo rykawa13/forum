@@ -276,6 +276,31 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+// @Summary Get User by ID
+// @Tags users
+// @Description Get user information by ID
+// @Security ApiKeyAuth
+// @Produce json
+// @Param id path int true "User ID"
+// @Success 200 {object} entity.User
+// @Failure 400,401,404,500 {object} map[string]interface{}
+// @Router /api/users/{id} [get]
+func (h *UserHandler) GetUser(c *gin.Context) {
+	userID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user id"})
+		return
+	}
+
+	user, err := h.authUC.GetUserByID(c.Request.Context(), userID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, user)
+}
+
 // ParseToken проверяет JWT токен и возвращает пользователя
 func (h *UserHandler) ParseToken(ctx context.Context, token string) (*entity.User, error) {
 	return h.authUC.ParseToken(ctx, token)

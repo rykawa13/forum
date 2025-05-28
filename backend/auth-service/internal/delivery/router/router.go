@@ -61,6 +61,9 @@ func (r *Router) Init() *gin.Engine {
 		api.GET("/me", userHandler.GetMe)
 		api.PUT("/me", userHandler.UpdateMe)
 
+		// User endpoints
+		api.GET("/users/:id", userHandler.GetUser)
+
 		// Admin endpoints
 		api.GET("/users", userHandler.GetUsers)
 		api.PUT("/users/:id/role", userHandler.UpdateUserRole)

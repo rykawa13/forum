@@ -2,11 +2,26 @@ package entity
 
 import "time"
 
+// Message представляет сообщение в чате
 type Message struct {
-	ID        int       `db:"id" json:"id"`
-	Content   string    `db:"content" json:"content"`
-	AuthorID  int       `db:"author_id" json:"author_id"`
-	CreatedAt time.Time `db:"created_at" json:"created_at"`
+	ID        string    `json:"id"`
+	Content   string    `json:"content"`
+	UserID    int64     `json:"user_id"`
+	Username  string    `json:"username"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// NewMessage создает новое сообщение
+func NewMessage(content string, userID int64, username string) *Message {
+	now := time.Now()
+	return &Message{
+		Content:   content,
+		UserID:    userID,
+		Username:  username,
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
 }
 
 type MessageCreate struct {

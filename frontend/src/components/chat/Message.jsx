@@ -1,38 +1,70 @@
 import React from 'react';
-import { useSelector } from 'react-redux';
-import { Box, Typography, Paper } from '@mui/material';
+import { Box, Typography, Avatar } from '@mui/material';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
+import '../../styles/chat.css';
 
-const Message = ({ message }) => {
-  const { user } = useSelector(state => state.auth);
-  const isCurrentUser = user?.id === message.userId;
+const Message = ({ message, isOwnMessage }) => {
+  if (!message) return null;
+
+  const {
+    content = '',
+    username = 'Anonymous',
+    created_at
+  } = message;
+
+  const formattedTime = created_at ? format(new Date(created_at), 'HH:mm', { locale: ru }) : '';
+  const firstLetter = username ? username.charAt(0).toUpperCase() : 'A';
 
   return (
-    <Box
+    <Box 
+      className={`message ${isOwnMessage ? 'own-message' : ''}`}
       sx={{
         display: 'flex',
-        justifyContent: isCurrentUser ? 'flex-end' : 'flex-start',
+        flexDirection: 'column',
         mb: 2,
+        maxWidth: '70%',
+        alignSelf: isOwnMessage ? 'flex-end' : 'flex-start',
+        bgcolor: isOwnMessage ? 'primary.light' : 'background.paper',
+        borderRadius: 2,
+        p: 1
       }}
     >
-      <Paper
-        elevation={3}
-        sx={{
-          p: 2,
-          maxWidth: '70%',
-          bgcolor: isCurrentUser ? 'primary.main' : 'background.paper',
-          color: isCurrentUser ? 'primary.contrastText' : 'text.primary',
-        }}
-      >
-        <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
-          {message.username}
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+        <Avatar 
+          sx={{ 
+            width: 24, 
+            height: 24, 
+            mr: 1,
+            bgcolor: isOwnMessage ? 'primary.main' : 'secondary.main',
+            fontSize: '0.875rem'
+          }}
+        >
+          {firstLetter}
+        </Avatar>
+        <Typography 
+          variant="subtitle2" 
+          component="span"
+          sx={{ 
+            fontWeight: 'bold',
+            color: isOwnMessage ? 'primary.main' : 'secondary.main'
+          }}
+        >
+          {username}
         </Typography>
-        <Typography variant="body1">{message.text}</Typography>
-        <Typography variant="caption" sx={{ display: 'block', textAlign: 'right' }}>
-          {format(new Date(message.createdAt), 'HH:mm, dd MMMM', { locale: ru })}
-        </Typography>
-      </Paper>
+        {formattedTime && (
+          <Typography 
+            variant="caption" 
+            component="span"
+            sx={{ ml: 'auto', color: 'text.secondary' }}
+          >
+            {formattedTime}
+          </Typography>
+        )}
+      </Box>
+      <Typography variant="body1" sx={{ wordBreak: 'break-word' }}>
+        {content}
+      </Typography>
     </Box>
   );
 };

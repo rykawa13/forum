@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+package chat;
+
+option go_package = "./;chat";
+
+import "google/protobuf/timestamp.proto";
+
+service ChatService {
+  // Проверка авторизации пользователя
+  rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse);
+  // Получение истории сообщений
+  rpc GetChatHistory(GetChatHistoryRequest) returns (GetChatHistoryResponse);
+  // Удаление старых сообщений
+  rpc DeleteOldMessages(DeleteOldMessagesRequest) returns (DeleteOldMessagesResponse);
+}
+
+message ValidateTokenRequest {
+  string token = 1;
+}
+
+message ValidateTokenResponse {
+  bool is_valid = 1;
+  int64 user_id = 2;
+  string username = 3;
+}
+
+message ChatMessage {
+  int64 id = 1;
+  string content = 2;
+  int64 user_id = 3;
+  string username = 4;
+  google.protobuf.Timestamp created_at = 5;
+}
+
+message GetChatHistoryRequest {
+  int32 limit = 1;
+  int64 before_id = 2;
+}
+
+message GetChatHistoryResponse {
+  repeated ChatMessage messages = 1;
+}
+
+message DeleteOldMessagesRequest {
+  google.protobuf.Timestamp before_time = 1;
+}
+
+message DeleteOldMessagesResponse {
+  int32 deleted_count = 1;
+} 

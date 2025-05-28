@@ -3,10 +3,9 @@ import { Routes, Route } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
-import theme from './theme.ts';
-import { checkAuth, logout } from './store/authSlice';
+import theme from './theme';
+import { checkAuth } from './store/authSlice';
 import { getAuthToken } from './utils/auth';
-import { setUnauthorizedCallback } from './api/axios';
 import Header from './components/common/Header';
 import Footer from './components/common/Footer';
 import HomePage from './pages/HomePage';
@@ -26,13 +25,6 @@ function App() {
   const { loading } = useSelector(state => state.auth);
   const [isInitializing, setIsInitializing] = useState(true);
   const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
-
-  // Настраиваем обработчик 401 ошибки
-  useEffect(() => {
-    setUnauthorizedCallback(() => {
-      dispatch(logout());
-    });
-  }, [dispatch]);
 
   useEffect(() => {
     const initializeAuth = async () => {
@@ -73,7 +65,7 @@ function App() {
         sx={{
           display: 'flex',
           flexDirection: 'column',
-          minHeight: '100vh', // Ensures minimum height of 100% of viewport
+          minHeight: '100vh',
         }}
       >
         <Header />

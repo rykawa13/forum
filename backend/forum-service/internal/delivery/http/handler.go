@@ -26,7 +26,7 @@ func (h *Handler) Init() *gin.Engine {
 
 	// CORS middleware
 	router.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:3000"},
+		AllowOrigins:     []string{"http://localhost:3000", "http://localhost:8080", "http://localhost:8081", "http://localhost:8082", "http://localhost:8083"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
@@ -47,7 +47,7 @@ func (h *Handler) Init() *gin.Engine {
 	})
 
 	// Routes
-	api := router.Group("/api")
+	api := router.Group("") // Убираем /api префикс
 	{
 		posts := api.Group("/posts")
 		{

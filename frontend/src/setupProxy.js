@@ -1,20 +1,24 @@
 const { createProxyMiddleware } = require('http-proxy-middleware');
 
 module.exports = function(app) {
-  app.use(
-    '/api',
-    createProxyMiddleware({
-      target: 'http://localhost:5000',
-      changeOrigin: true,
-    })
-  );
-  
-  app.use(
-    '/chat',
-    createProxyMiddleware({
-      target: 'http://localhost:5001',
-      changeOrigin: true,
-      ws: true,
-    })
-  );
+  // Прокси для чат-сервиса
+  const chatProxy = createProxyMiddleware({
+    target: 'http://localhost:8083',
+    changeOrigin: true,
+    ws: true,
+    pathRewrite: {
+      '^/api/chat': '/api/chat',
+      '^/ws': '/api/chat/ws'
+    }
+  });
+
+  // Прокси для основного API
+  const apiProxy = createProxyMiddleware({
+    target: 'http://localhost:8081',
+    changeOrigin: true,
+  });
+
+  app.use('/api/chat', chatProxy);
+  app.use('/ws', chatProxy);
+  app.use('/api', apiProxy);
 };

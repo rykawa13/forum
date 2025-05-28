@@ -1,30 +1,42 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { connectSocket, disconnectSocket } from '../utils/socket';
-import { fetchMessages, sendMessage } from '../store/chatSlice';
+import { fetchMessages, sendMessage, receiveMessage } from '../store/chatSlice';
 import ChatWindow from '../components/chat/ChatWindow';
 import { Box, Typography } from '@mui/material';
 
 const ChatPage = () => {
   const dispatch = useDispatch();
-  const { isAuthenticated, user } = useSelector(state => state.auth);
-  const { messages, onlineUsers } = useSelector(state => state.chat);
+  const { isAuthenticated } = useSelector(state => state.auth);
+  const { messages } = useSelector(state => state.chat);
+
+  const handleNewMessage = useCallback((message) => {
+    console.log('Handling new message in ChatPage:', message);
+    dispatch(receiveMessage(message));
+  }, [dispatch]);
 
   useEffect(() => {
-    dispatch(fetchMessages());
-
-    if (isAuthenticated) {
-      connectSocket(user.token);
+    console.log('ChatPage: Initializing chat connection');
+    const token = localStorage.getItem('token');
+    
+    if (!token) {
+      console.error('No authentication token found');
+      return;
     }
+    
+    console.log('ChatPage: Got token, connecting to WebSocket');
+    connectSocket(token, handleNewMessage);
 
     return () => {
+      console.log('ChatPage: Cleaning up chat connection');
       disconnectSocket();
     };
-  }, [dispatch, isAuthenticated, user]);
+  }, [handleNewMessage]);
 
   const handleSendMessage = (messageText) => {
     if (messageText.trim()) {
-      dispatch(sendMessage({ text: messageText }));
+      console.log('ChatPage: Sending message:', messageText);
+      dispatch(sendMessage(messageText));
     }
   };
 
@@ -32,9 +44,6 @@ const ChatPage = () => {
     <Box sx={{ p: 3 }}>
       <Typography variant="h4" gutterBottom>
         Чат форума
-      </Typography>
-      <Typography variant="subtitle1" gutterBottom>
-        Онлайн: {onlineUsers} пользователей
       </Typography>
       <ChatWindow messages={messages} onSendMessage={handleSendMessage} />
     </Box>
