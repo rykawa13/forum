@@ -1,0 +1,112 @@
+syntax = "proto3";
+
+package forum;
+
+option go_package = "./;pb";
+
+import "google/protobuf/timestamp.proto";
+
+service ForumService {
+  rpc CreatePost(CreatePostRequest) returns (CreatePostResponse) {}
+  rpc GetPost(GetPostRequest) returns (Post) {}
+  rpc ListPosts(ListPostsRequest) returns (ListPostsResponse) {}
+  rpc UpdatePost(UpdatePostRequest) returns (Post) {}
+  rpc DeletePost(DeletePostRequest) returns (DeletePostResponse) {}
+  
+  rpc CreateReply(CreateReplyRequest) returns (CreateReplyResponse) {}
+  rpc ListReplies(ListRepliesRequest) returns (ListRepliesResponse) {}
+  rpc DeleteReply(DeleteReplyRequest) returns (DeleteReplyResponse) {}
+}
+
+message User {
+  int32 id = 1;
+  string username = 2;
+}
+
+message Post {
+  int64 id = 1;
+  string title = 2;
+  string content = 3;
+  int32 user_id = 4;
+  User author = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
+  bool is_locked = 8;
+  int32 view_count = 9;
+  int32 reply_count = 10;
+}
+
+message Reply {
+  int64 id = 1;
+  int64 post_id = 2;
+  string content = 3;
+  int32 user_id = 4;
+  User author = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
+}
+
+message CreatePostRequest {
+  string title = 1;
+  string content = 2;
+  int32 user_id = 3;
+  string username = 4;
+}
+
+message CreatePostResponse {
+  int64 id = 1;
+}
+
+message GetPostRequest {
+  int64 id = 1;
+}
+
+message ListPostsRequest {
+  int32 offset = 1;
+  int32 limit = 2;
+}
+
+message ListPostsResponse {
+  repeated Post posts = 1;
+  int32 total = 2;
+}
+
+message UpdatePostRequest {
+  int64 id = 1;
+  string title = 2;
+  string content = 3;
+}
+
+message DeletePostRequest {
+  int64 id = 1;
+}
+
+message DeletePostResponse {}
+
+message CreateReplyRequest {
+  int64 post_id = 1;
+  string content = 2;
+  int32 user_id = 3;
+  string username = 4;
+}
+
+message CreateReplyResponse {
+  int64 id = 1;
+}
+
+message ListRepliesRequest {
+  int64 post_id = 1;
+  int32 offset = 2;
+  int32 limit = 3;
+}
+
+message ListRepliesResponse {
+  repeated Reply replies = 1;
+  int32 total = 2;
+}
+
+message DeleteReplyRequest {
+  int64 id = 1;
+}
+
+message DeleteReplyResponse {} 
