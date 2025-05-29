@@ -42,7 +42,7 @@ func (r *messageRepository) Create(ctx context.Context, message *entity.Message)
 	query := `
         INSERT INTO messages (content, user_id, username, created_at, updated_at)
         VALUES ($1, $2, $3, $4, $5)
-        RETURNING id`
+        RETURNING id::text`
 
 	log.Printf("Executing query: %s with values: content=%s, user_id=%d, username=%s",
 		query, message.Content, message.UserID, message.Username)
@@ -67,7 +67,7 @@ func (r *messageRepository) Create(ctx context.Context, message *entity.Message)
 		return fmt.Errorf("database error: %v", err)
 	}
 
-	log.Printf("Successfully created message with ID: %d", message.ID)
+	log.Printf("Successfully created message with ID: %s", message.ID)
 	return nil
 }
 

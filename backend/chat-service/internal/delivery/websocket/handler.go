@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -32,6 +33,11 @@ var upgrader = websocket.Upgrader{
 			origin == "http://localhost:8082" || // Forum service
 			origin == "http://localhost:8083" // Chat service
 	},
+}
+
+// SetUpgraderSettings allows overriding upgrader settings for tests
+func SetUpgraderSettings(settings websocket.Upgrader) {
+	upgrader = settings
 }
 
 // Handler обработчик WebSocket
@@ -107,29 +113,22 @@ func (h *Handler) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	// Проверяем наличие токена
 	token := r.URL.Query().Get("token")
-	if token == "" {
-		h.logger.Error("No token provided",
-			zap.String("remote_addr", r.RemoteAddr))
-		http.Error(w, "No token provided", http.StatusUnauthorized)
-		return
+	var authResp *struct {
+		ID       int64  `json:"id"`
+		Username string `json:"username"`
 	}
+	var err error
 
-	// Валидируем токен до установки WebSocket соединения
-	authResp, err := h.validateToken(r.Context(), token)
-	if err != nil {
-		h.logger.Error("Failed to validate token",
-			zap.Error(err),
-			zap.String("remote_addr", r.RemoteAddr))
-		http.Error(w, "Invalid token", http.StatusUnauthorized)
-		return
-	}
-
-	if authResp == nil || authResp.ID == 0 || authResp.Username == "" {
-		h.logger.Error("Invalid auth response",
-			zap.Any("auth_response", authResp),
-			zap.String("remote_addr", r.RemoteAddr))
-		http.Error(w, "Invalid authentication data", http.StatusUnauthorized)
-		return
+	// Если токен предоставлен, пытаемся аутентифицировать пользователя
+	if token != "" {
+		authResp, err = h.validateToken(r.Context(), token)
+		if err != nil {
+			h.logger.Warn("Failed to validate token",
+				zap.Error(err),
+				zap.String("remote_addr", r.RemoteAddr))
+			// Продолжаем как анонимный пользователь
+			authResp = nil
+		}
 	}
 
 	// Устанавливаем WebSocket соединение
@@ -141,37 +140,64 @@ func (h *Handler) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.logger.Info("WebSocket connection established",
-		zap.String("remote_addr", r.RemoteAddr),
-		zap.Int64("user_id", authResp.ID),
-		zap.String("username", authResp.Username))
+	var client *usecase.Client
+	if authResp != nil && authResp.ID != 0 && authResp.Username != "" {
+		// Создаем аутентифицированного клиента
+		client = usecase.NewClient(conn, authResp.ID, authResp.Username, true)
+		h.logger.Info("Authenticated WebSocket connection established",
+			zap.String("remote_addr", r.RemoteAddr),
+			zap.Int64("user_id", authResp.ID),
+			zap.String("username", authResp.Username))
 
-	// Создаем нового клиента с данными из токена
-	client := usecase.NewClient(conn, authResp.ID, authResp.Username)
-	client.IsAuth = true // Клиент уже аутентифицирован
+		// Отправляем подтверждение успешной аутентификации
+		authSuccess := usecase.ChatMessage{
+			Type:     "auth_success",
+			UserID:   authResp.ID,
+			Username: authResp.Username,
+		}
 
-	// Отправляем подтверждение успешной аутентификации
-	authSuccess := usecase.ChatMessage{
-		Type:     "auth_success",
-		UserID:   authResp.ID,
-		Username: authResp.Username,
-	}
+		authSuccessJSON, err := json.Marshal(authSuccess)
+		if err != nil {
+			h.logger.Error("Failed to marshal auth success message",
+				zap.Error(err),
+				zap.Any("auth_success", authSuccess))
+			conn.Close()
+			return
+		}
 
-	authSuccessJSON, err := json.Marshal(authSuccess)
-	if err != nil {
-		h.logger.Error("Failed to marshal auth success message",
-			zap.Error(err),
-			zap.Any("auth_success", authSuccess))
-		conn.Close()
-		return
-	}
+		if err := conn.WriteMessage(websocket.TextMessage, authSuccessJSON); err != nil {
+			h.logger.Error("Failed to send auth success message",
+				zap.Error(err),
+				zap.Any("auth_success", authSuccess))
+			conn.Close()
+			return
+		}
+	} else {
+		// Создаем анонимного клиента
+		client = usecase.NewClient(conn, 0, "anonymous", false)
+		h.logger.Info("Anonymous WebSocket connection established",
+			zap.String("remote_addr", r.RemoteAddr))
 
-	if err := conn.WriteMessage(websocket.TextMessage, authSuccessJSON); err != nil {
-		h.logger.Error("Failed to send auth success message",
-			zap.Error(err),
-			zap.Any("auth_success", authSuccess))
-		conn.Close()
-		return
+		// Отправляем информацию о статусе анонимного пользователя
+		anonInfo := usecase.ChatMessage{
+			Type:  "connection_info",
+			Error: "Вы подключены как анонимный пользователь. Для отправки сообщений необходима авторизация.",
+		}
+
+		anonInfoJSON, err := json.Marshal(anonInfo)
+		if err != nil {
+			h.logger.Error("Failed to marshal anonymous info message",
+				zap.Error(err))
+			conn.Close()
+			return
+		}
+
+		if err := conn.WriteMessage(websocket.TextMessage, anonInfoJSON); err != nil {
+			h.logger.Error("Failed to send anonymous info message",
+				zap.Error(err))
+			conn.Close()
+			return
+		}
 	}
 
 	// Регистрируем клиента
@@ -187,8 +213,14 @@ func (h *Handler) validateToken(ctx context.Context, token string) (*struct {
 	ID       int64  `json:"id"`
 	Username string `json:"username"`
 }, error) {
+	// Get auth service URL from environment
+	authServiceURL := os.Getenv("AUTH_SERVICE_URL")
+	if authServiceURL == "" {
+		authServiceURL = "http://localhost:8081"
+	}
+
 	// Make request to auth service
-	req, err := http.NewRequestWithContext(ctx, "GET", "http://localhost:8081/api/me", nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", authServiceURL+"/api/me", nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}

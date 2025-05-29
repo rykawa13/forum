@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { TextField, Button, Box } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 
-const MessageForm = ({ onSendMessage, disabled }) => {
+const MessageForm = ({ onSendMessage, disabled, placeholder }) => {
   const [message, setMessage] = useState('');
 
   const handleSubmit = (e) => {
@@ -28,7 +28,7 @@ const MessageForm = ({ onSendMessage, disabled }) => {
       <TextField
         fullWidth
         variant="outlined"
-        placeholder={disabled ? "Подключение к чату..." : "Напишите сообщение..."}
+        placeholder={placeholder || (disabled ? "Подключение к чату..." : "Напишите сообщение...")}
         value={message}
         onChange={(e) => setMessage(e.target.value)}
         disabled={disabled}

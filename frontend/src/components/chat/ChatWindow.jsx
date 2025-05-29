@@ -7,7 +7,7 @@ import { Alert, Snackbar, Box, CircularProgress, Typography, IconButton } from '
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import '../../styles/chat.css';
 
-const ChatWindow = () => {
+const ChatWindow = ({ isReadOnly }) => {
   const dispatch = useDispatch();
   const { messages = [], loading, error, connected, connecting } = useSelector(state => state.chat);
   const { isAuthenticated, user } = useSelector(state => state.auth);
@@ -16,11 +16,9 @@ const ChatWindow = () => {
   const [showScrollButton, setShowScrollButton] = useState(false);
 
   useEffect(() => {
-    if (isAuthenticated) {
-      console.log('ChatWindow: Fetching initial messages');
-      dispatch(fetchMessages());
-    }
-  }, [dispatch, isAuthenticated]);
+    console.log('ChatWindow: Fetching initial messages');
+    dispatch(fetchMessages());
+  }, [dispatch]);
 
   useEffect(() => {
     const container = messagesContainerRef.current;
@@ -61,7 +59,7 @@ const ChatWindow = () => {
   };
 
   const handleSendMessage = async (message) => {
-    if (message.trim() && isAuthenticated) {
+    if (message.trim() && !isReadOnly) {
       if (!connected) {
         console.error('ChatWindow: Cannot send message - not connected');
         return;
@@ -79,18 +77,6 @@ const ChatWindow = () => {
   const handleCloseError = () => {
     dispatch(clearError());
   };
-
-  if (!isAuthenticated) {
-    return (
-      <Box className="chat-window">
-        <Box className="messages-container">
-          <Typography className="info-message">
-            Please log in to participate in the chat
-          </Typography>
-        </Box>
-      </Box>
-    );
-  }
 
   if (loading) {
     return (
@@ -117,13 +103,13 @@ const ChatWindow = () => {
 
       {connecting && (
         <Box sx={{ p: 1, bgcolor: 'warning.light', textAlign: 'center' }}>
-          <Typography>Connecting to chat...</Typography>
+          <Typography>Подключение к чату...</Typography>
         </Box>
       )}
 
       {!connected && !connecting && (
         <Box sx={{ p: 1, bgcolor: 'error.light', textAlign: 'center' }}>
-          <Typography>Chat disconnected. Trying to reconnect...</Typography>
+          <Typography>Соединение потеряно. Пытаемся переподключиться...</Typography>
         </Box>
       )}
 
@@ -137,7 +123,7 @@ const ChatWindow = () => {
             />
           ))
         ) : (
-          <Typography className="info-message">No messages yet</Typography>
+          <Typography className="info-message">Нет сообщений</Typography>
         )}
         <div ref={messagesEndRef} />
       </Box>
@@ -164,7 +150,8 @@ const ChatWindow = () => {
 
       <MessageForm 
         onSendMessage={handleSendMessage} 
-        disabled={!connected || connecting}
+        disabled={!connected || connecting || isReadOnly}
+        placeholder={isReadOnly ? "Для отправки сообщений необходима авторизация" : "Напишите сообщение..."}
       />
     </Box>
   );

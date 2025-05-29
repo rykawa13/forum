@@ -37,6 +37,7 @@ type Client struct {
 	UserID   int64
 	Username string
 	IsAuth   bool
+	Role     string // "anonymous" или "authenticated"
 	ctx      context.Context
 	cancel   context.CancelFunc
 }
@@ -65,13 +66,19 @@ func NewChatUseCase(repo repository.MessageRepository, db *pgxpool.Pool) *ChatUs
 }
 
 // NewClient создает нового клиента
-func NewClient(conn *websocket.Conn, userID int64, username string) *Client {
+func NewClient(conn *websocket.Conn, userID int64, username string, isAuth bool) *Client {
 	ctx, cancel := context.WithCancel(context.Background())
+	role := "anonymous"
+	if isAuth {
+		role = "authenticated"
+	}
 	return &Client{
 		Conn:     conn,
 		Send:     make(chan []byte, 256),
 		UserID:   userID,
 		Username: username,
+		IsAuth:   isAuth,
+		Role:     role,
 		ctx:      ctx,
 		cancel:   cancel,
 	}
@@ -116,48 +123,50 @@ func (uc *ChatUseCase) Run() {
 }
 
 // HandleMessage обрабатывает входящее сообщение
-func (uc *ChatUseCase) HandleMessage(ctx context.Context, client *Client, messageType int, messageData []byte) error {
-	dbCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
+func (c *Client) HandleMessage(message []byte, uc *ChatUseCase) error {
 	var msg ChatMessage
-	if err := json.Unmarshal(messageData, &msg); err != nil {
+	if err := json.Unmarshal(message, &msg); err != nil {
 		return fmt.Errorf("failed to unmarshal message: %v", err)
+	}
+
+	// Проверяем права на отправку сообщений
+	if msg.Type == "message" && !c.IsAuth {
+		errorMsg := ChatMessage{
+			Type:  "error",
+			Error: "Только авторизованные пользователи могут отправлять сообщения",
+		}
+		errorJSON, _ := json.Marshal(errorMsg)
+		c.Send <- errorJSON
+		return errors.New("unauthorized to send messages")
 	}
 
 	switch msg.Type {
 	case "message":
-		if !client.IsAuth {
-			return errors.New("not authenticated")
-		}
-
-		now := time.Now()
-		message := &entity.Message{
+		// Создаем новое сообщение
+		newMsg := entity.Message{
 			ID:        uuid.New().String(),
-			UserID:    client.UserID,
-			Username:  client.Username,
 			Content:   msg.Content,
-			CreatedAt: now,
-			UpdatedAt: now,
+			UserID:    c.UserID,
+			Username:  c.Username,
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
 		}
 
-		// Сохраняем сообщение в базу данных
-		if err := uc.repo.Create(dbCtx, message); err != nil {
+		// Сохраняем сообщение в БД
+		if err := uc.repo.Create(c.ctx, &newMsg); err != nil {
 			return fmt.Errorf("failed to save message: %v", err)
 		}
 
 		// Отправляем сообщение всем клиентам
 		response := ChatMessage{
 			Type:      "message",
-			ID:        message.ID,
-			UserID:    message.UserID,
-			Username:  message.Username,
-			Content:   message.Content,
-			CreatedAt: message.CreatedAt,
+			ID:        newMsg.ID,
+			Content:   newMsg.Content,
+			UserID:    newMsg.UserID,
+			Username:  newMsg.Username,
+			CreatedAt: newMsg.CreatedAt,
 			TempID:    msg.TempID,
 		}
-
-		log.Printf("Sending response message: %+v", response)
 
 		responseJSON, err := json.Marshal(response)
 		if err != nil {
@@ -165,18 +174,9 @@ func (uc *ChatUseCase) HandleMessage(ctx context.Context, client *Client, messag
 		}
 
 		uc.broadcast <- responseJSON
-		return nil
-
-	default:
-		log.Printf("Unknown message type received: %s from user %d", msg.Type, client.UserID)
-		errorMsg := ChatMessage{
-			Type:  "error",
-			Error: fmt.Sprintf("Unknown message type: %s", msg.Type),
-		}
-		errorData, _ := json.Marshal(errorMsg)
-		client.Send <- errorData
-		return nil
 	}
+
+	return nil
 }
 
 // GetHistory возвращает историю сообщений
@@ -230,7 +230,7 @@ func (c *Client) ReadPump(uc *ChatUseCase) {
 		case <-c.ctx.Done():
 			return
 		default:
-			messageType, message, err := c.Conn.ReadMessage()
+			_, message, err := c.Conn.ReadMessage()
 			if err != nil {
 				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 					log.Printf("error: %v", err)
@@ -238,7 +238,7 @@ func (c *Client) ReadPump(uc *ChatUseCase) {
 				return
 			}
 
-			if err := uc.HandleMessage(c.ctx, c, messageType, message); err != nil {
+			if err := c.HandleMessage(message, uc); err != nil {
 				log.Printf("error handling message: %v", err)
 				errorMsg := ChatMessage{
 					Type:  "error",
